@@ -124,6 +124,20 @@ EOD;
     }
 
     /**
+     * @param int $orderId
+     * @return array
+     */
+    protected function getItemList($orderId) {
+        $orderId = (int) $orderId;
+        $itemList = array();
+        $query = tep_db_query("SELECT * FROM " . TABLE_ORDERS_PRODUCTS . " WHERE orders_id = " . $orderId);
+        while ($product = tep_db_fetch_array($query)) {
+            $itemList[] = $product;
+        }
+        return $itemList;
+    }
+
+    /**
      * @return string
      */
     protected function getRemoteIp() {
@@ -158,15 +172,36 @@ EOD;
     }
 
     /**
+     * @param int $orderId
+     * @return array
+     */
+    protected function getTotalList($orderId) {
+        $orderId = (int) $orderId;
+        $totalList = array();
+        $query = tep_db_query("SELECT * FROM " . TABLE_ORDERS_TOTAL . " WHERE orders_id = " . $orderId);
+        while ($total = tep_db_fetch_array($query)) {
+            $totalList[] = $total;
+        }
+        return $totalList;
+    }
+
+    /**
      * @param int $customerId
      */
     protected function trackOrder($customerId) {
         try {
             if ($this->isEnabled()) {
                 $order = $this->getOrderLast($customerId);
-                if (is_array($order)) {
+                if (is_array($order) && isset($order['orders_id'])) {
+                    $orderId = (int) $order['orders_id'];
+                    $itemList = $this->getItemList($orderId);
+                    $totalList = $this->getTotalList($orderId);
                     $url = $this->getApiUrl('/oscommerce/webhook-order', true);
-                    $body = json_encode($order);
+                    $body = json_encode(array(
+                        'order' => $order,
+                        'items' => $itemList,
+                        'totals' => $totalList,
+                    ));
                     $this->webhook($url, $body);
                 }
             }
